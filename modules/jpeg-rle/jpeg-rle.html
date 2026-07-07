@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RLE dos coeficientes AC no JPEG — convenções e passo a passo</title>
+<style>
+  body { font-family: Georgia, serif; max-width: 46rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; color: #222; }
+  h1, h2 { font-family: system-ui, sans-serif; }
+  table { border-collapse: collapse; margin: 1rem 0; }
+  td, th { border: 1px solid #999; padding: .25rem .6rem; text-align: center; font-variant-numeric: tabular-nums; }
+  th { background: #f4f4f4; font-family: system-ui, sans-serif; font-size: .85rem; }
+  pre { background: #f4f4f4; padding: .8rem 1rem; border-radius: 4px; overflow-x: auto; line-height: 1.35; }
+  code, .formula { font-family: ui-monospace, monospace; background: #f4f4f4; padding: .1rem .3rem; border-radius: 3px; }
+  .box { border-left: 4px solid #4a7; background: #f2faf5; padding: .6rem 1rem; margin: 1rem 0; }
+  ol li, ul li { margin: .4rem 0; }
+</style>
+</head>
+<body>
+
+<h1>RLE dos coeficientes AC no JPEG</h1>
+
+<p>Estágio do pipeline JPEG:
+<strong>DCT &rarr; quantização &rarr; zig-zag &rarr; RLE &rarr; Huffman</strong>.
+A lógica de cada etapa:</p>
+
+<ul>
+  <li><strong>DCT:</strong> troca pixels por "quanto de cada frequência" — em
+      imagens naturais a energia concentra nos primeiros coeficientes
+      (baixas frequências).</li>
+  <li><strong>Quantização:</strong> divide e arredonda — <em>fabrica zeros</em>
+      nas altas frequências (é a etapa com perdas).</li>
+  <li><strong>Zig-zag:</strong> lê em ordem crescente de frequência —
+      <em>enfileira os zeros no final</em> da sequência 1D.</li>
+  <li><strong>RLE:</strong> não codifica zeros; codifica <em>quantos zeros</em>
+      existem antes de cada valor que importa.</li>
+</ul>
+
+<h2>Convenções adotadas</h2>
+<ol>
+  <li>O 1º valor do bloco em zig-zag é o <strong>DC</strong> — codificado à
+      parte (DPCM com o DC do bloco anterior). O RLE atua nos AC restantes.</li>
+  <li>Cada AC não-nulo vira o par <strong>(RUN, VALOR)</strong>:
+      RUN = nº de zeros imediatamente antes dele.</li>
+  <li>Cauda de zeros até o fim do bloco vira um único
+      <strong>EOB&nbsp;=&nbsp;(0,0)</strong>. Último coeficiente não-nulo
+      &rarr; sem EOB.</li>
+  <li><strong>SIZE (categoria):</strong> nº de bits da amplitude —
+      &plusmn;1&rarr;1; &plusmn;2..3&rarr;2; &plusmn;4..7&rarr;3;
+      &plusmn;8..15&rarr;4. Custo de um par &asymp; Huffman(RUN,SIZE) +
+      SIZE bits.</li>
+</ol>
+
+<h2>Parâmetros que influenciam a quantidade de bits</h2>
+<ul>
+  <li><strong>Corridas de zeros (RUN):</strong> corridas longas = menos pares.</li>
+  <li><strong>Amplitude (SIZE):</strong> coeficientes pequenos = menos bits por par.</li>
+  <li><strong>Posição do último não-nulo (EOB):</strong> quanto mais cedo,
+      maior a cauda cortada por um símbolo só.</li>
+  <li><strong>A montante:</strong> a tabela de quantização (mais agressiva =
+      mais zeros = menos bits = pior qualidade).</li>
+</ul>
+
+<h2>Exemplo (prova) — dois blocos 4&times;4 em zig-zag</h2>
+
+<pre>Bloco A: [10, -5, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+Bloco B: [1, 1, -1, 1, 1, -1, 1, -1, 1, 1, -1, 1, -1, 1, -1, 1]</pre>
+
+<h2>Passo a passo — Bloco A</h2>
+
+<p>DC = 10 (à parte). Percorra os 15 AC com um contador de zeros:</p>
+
+<table>
+<tr><th>vejo</th><th>contador</th><th>ação</th></tr>
+<tr><td>&minus;5</td><td>0</td><td>emito <strong>(0, &minus;5)</strong>, zero o contador</td></tr>
+<tr><td>0, 0</td><td>1, 2</td><td>só conto</td></tr>
+<tr><td>2</td><td>2</td><td>emito <strong>(2, 2)</strong>, zero o contador</td></tr>
+<tr><td>0 &times;11</td><td>&hellip;</td><td>zeros até o fim &rarr; <strong>EOB</strong></td></tr>
+</table>
+
+<p class="formula">Bloco A = (0,&minus;5) (2,2) EOB &nbsp;&rarr;&nbsp;
+<strong>3 símbolos</strong> (&asymp;17 bits com Huffman padrão)</p>
+
+<h2>Passo a passo — Bloco B</h2>
+
+<p>DC = 1 (à parte). Nos 15 AC <em>não existe nenhum zero</em>: o contador
+nunca sai de 0 e cada coeficiente vira seu próprio par:</p>
+
+<p class="formula">Bloco B = (0,1)(0,&minus;1)(0,1)(0,1)(0,&minus;1)&hellip;(0,1)
+&nbsp;&rarr;&nbsp; <strong>15 símbolos</strong>, sem EOB (&asymp;50+ bits)</p>
+
+<h2>Conclusão</h2>
+
+<div class="box"><strong>O Bloco A tem fluxo de bits menor.</strong>
+Ele concentra energia nas baixas frequências: a quantização zerou o resto e
+o RLE colapsou 15 coeficientes em 3 símbolos (corridas de zeros + EOB).
+O Bloco B é o pior caso: conteúdo de alta frequência (&plusmn;1 alternando =
+padrão xadrez/ruído) sem nenhum zero — o RLE degenera em um par por
+coeficiente. Mesmo com amplitudes mínimas, a quantidade de símbolos domina.</div>
+
+<p>Moral teórica: o JPEG aposta que imagens naturais concentram energia em
+baixa frequência. O Bloco B viola a premissa — por isso ruído e textura fina
+são o que mais custa bits (ou mais degrada) em JPEG.</p>
+
+<p>Código parametrizável: <code>jpeg_rle.py</code>
+(<code>rle_ac</code>, <code>size</code>, <code>bits_estimados</code>; rode
+<code>python3 jpeg_rle.py</code> para reproduzir o exemplo).</p>
+
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compressão Delta Modulation — convenções e passo a passo</title>
+<style>
+  body { font-family: Georgia, serif; max-width: 46rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; color: #222; }
+  h1, h2 { font-family: system-ui, sans-serif; }
+  table { border-collapse: collapse; margin: 1rem 0; }
+  td, th { border: 1px solid #999; width: 2.4rem; height: 2.4rem; text-align: center; font-variant-numeric: tabular-nums; }
+  .hl { background: #ffe9a8; }
+  code, .formula { font-family: ui-monospace, monospace; background: #f4f4f4; padding: .1rem .3rem; border-radius: 3px; }
+  .box { border-left: 4px solid #4a7; background: #f2faf5; padding: .6rem 1rem; margin: 1rem 0; }
+  ol li { margin: .4rem 0; }
+</style>
+</head>
+<body>
+
+<h1>Compressão Delta Modulation (DM)</h1>
+
+<p>A DM é a forma mais simples de codificação preditiva (um DPCM de 1 bit):
+em vez de transmitir cada pixel, transmite-se <strong>1 bit por pixel</strong>
+dizendo se ele é maior ou menor que a predição. Aqui, com passo
+<code>&delta; = 2</code>: bit <code>0</code> = +2, bit <code>1</code> = &minus;2.
+Taxa de compressão nominal: 8&nbsp;bits &rarr; 1&nbsp;bit = 8:1 (com perdas).</p>
+
+<h2>Convenções adotadas (disciplina PDI)</h2>
+<ol>
+  <li><strong>Varredura raster:</strong> linha a linha, da esquerda para a direita.</li>
+  <li><strong>Seed único:</strong> apenas o pixel (1,1) é transmitido intacto.</li>
+  <li><strong>Predição:</strong> o valor <em>reconstruído</em> do pixel à esquerda;
+      na 1ª coluna, o reconstruído do pixel de cima (mesma coluna).</li>
+  <li><strong>Passo:</strong> se <code>x &gt; predição</code> &rarr; +2;
+      se <code>x &lt; predição</code> &rarr; &minus;2.</li>
+  <li><strong>Empate</strong> (<code>x = predição</code>): olha-se o
+      <em>próximo valor da varredura</em> e adota-se o passo que deixa a
+      reconstrução mais perto dele. Se as duas opções ficarem à mesma
+      distância, adota-se o passo mais favorável ao pixel atual.</li>
+  <li><strong>Saturação nos dois extremos:</strong> resultado fora de
+      [0, 4] trava na borda (negativo vira 0; acima do máximo vira 4).</li>
+</ol>
+
+<div class="box">Ponto que mais cai em prova: a predição usa sempre o valor
+<strong>reconstruído</strong>, nunca o original — codificador e decodificador
+precisam enxergar a mesma coisa. Por isso um erro numa posição se propaga
+(efeito cascata).</div>
+
+<h2>Exemplo</h2>
+
+<p>Imagem original (5&times;5, intensidades 0–4):</p>
+
+<table>
+<tr><td>0</td><td>3</td><td>0</td><td>3</td><td>0</td></tr>
+<tr><td>2</td><td>2</td><td>0</td><td>0</td><td>3</td></tr>
+<tr><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td></tr>
+<tr><td>3</td><td>1</td><td>1</td><td>4</td><td>2</td></tr>
+<tr><td>3</td><td>3</td><td>4</td><td>4</td><td>4</td></tr>
+</table>
+
+<h2>Passo a passo</h2>
+
+<p><strong>Linha 1</strong> — seed: reconstruído(1,1) = 0 (intacto).
+Depois: 3&gt;0&rarr;2; 0&lt;2&rarr;0; 3&gt;0&rarr;2; 0&lt;2&rarr;0
+&nbsp;&rArr;&nbsp; <code>[0, 2, 0, 2, 0]</code></p>
+
+<p><strong>Linha 2</strong> — 1ª coluna prediz de cima: 2&gt;0&rarr;2.
+Depois: 2=2 <em>empate</em>, próximo valor é 0 &rarr; desce &rarr; 0;
+0=0 empate, próximo 0 &rarr; desce (satura) &rarr; 0;
+0=0 empate, próximo <strong>3</strong> &rarr; <em>sobe</em> &rarr; 2;
+3&gt;2&rarr;4
+&nbsp;&rArr;&nbsp; <code>[2, 0, 0, 2, 4]</code></p>
+
+<p><strong>Linha 3</strong> — 0&lt;2&rarr;0.
+Empates com próximo 0 &rarr; descem, saturando em 0: 0; 0; 0;
+1&gt;0&rarr;2
+&nbsp;&rArr;&nbsp; <code>[0, 0, 0, 0, 2]</code></p>
+
+<p><strong>Linha 4</strong> — 3&gt;0&rarr;2; 1&lt;2&rarr;0; 1&gt;0&rarr;2;
+4&gt;2&rarr;4; 2&lt;4&rarr;2
+&nbsp;&rArr;&nbsp; <code>[2, 0, 2, 4, 2]</code></p>
+
+<p><strong>Linha 5</strong> — 3&gt;2&rarr;4; 3&lt;4&rarr;2; 4&gt;2&rarr;4;
+4=4 empate, próximo 4 &rarr; sobe e <em>satura no máximo</em> &rarr; 4;
+4=4 empate, último pixel &rarr; mantém o mais favorável &rarr; 4
+&nbsp;&rArr;&nbsp; <code>[4, 2, 4, 4, 4]</code></p>
+
+<h2>Matriz reconstruída</h2>
+
+<table>
+<tr><td>0</td><td>2</td><td>0</td><td>2</td><td>0</td></tr>
+<tr><td>2</td><td class="hl">0</td><td class="hl">0</td><td class="hl">2</td><td>4</td></tr>
+<tr><td>0</td><td class="hl">0</td><td class="hl">0</td><td class="hl">0</td><td>2</td></tr>
+<tr><td>2</td><td>0</td><td>2</td><td>4</td><td>2</td></tr>
+<tr><td>4</td><td>2</td><td>4</td><td class="hl">4</td><td class="hl">4</td></tr>
+</table>
+
+<p>(células destacadas = posições decididas pela regra do empate)</p>
+
+<h2>MSE</h2>
+
+<p class="formula">MSE = &Sigma;(original &minus; reconstruído)&sup2; / N&sup2;</p>
+
+<p>Erros&sup2; por linha: 2 + 9 + 1 + 3 + 2 = 17</p>
+
+<p class="formula"><strong>MSE = 17 / 25 = 0,68</strong></p>
+
+<h2>Os dois artefatos clássicos (para citar na prova)</h2>
+<ul>
+  <li><strong>Slope overload</strong> (&delta; pequeno demais): em bordas, a DM
+      só sobe/desce 2 por passo e não acompanha o salto — ex.: linha 4, o
+      pixel 4 reconstruído como 4 só porque a subida começou antes; na
+      linha 5, o 3 após a coluna de cima escura vira 4/2 oscilando.</li>
+  <li><strong>Ruído granular</strong> (&delta; grande demais): em regiões
+      constantes a reconstrução oscila &plusmn;&delta; em volta do valor real —
+      aqui a saturação em 0 e a regra do empate com lookahead <em>reduzem</em>
+      esse efeito (linha 3 gruda no 0).</li>
+</ul>
+
+<p>Código parametrizável: <code>delta_modulation.py</code> (rode
+<code>python3 delta_modulation.py</code> para reproduzir este exemplo).</p>
+
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LBP (Local Binary Pattern) — convenções e passo a passo</title>
+<style>
+  body { font-family: Georgia, serif; max-width: 46rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; color: #222; }
+  h1, h2 { font-family: system-ui, sans-serif; }
+  table { border-collapse: collapse; margin: 1rem 0; display: inline-table; margin-right: 1.5rem; }
+  td, th { border: 1px solid #999; width: 2.4rem; height: 2.4rem; text-align: center; font-variant-numeric: tabular-nums; }
+  .c { background: #ffe9a8; font-weight: bold; }
+  code, .formula { font-family: ui-monospace, monospace; background: #f4f4f4; padding: .1rem .3rem; border-radius: 3px; }
+  .box { border-left: 4px solid #4a7; background: #f2faf5; padding: .6rem 1rem; margin: 1rem 0; }
+  ol li { margin: .4rem 0; }
+</style>
+</head>
+<body>
+
+<h1>LBP — Local Binary Pattern</h1>
+
+<p>Descritor de <strong>textura</strong>: codifica o padrão local ao redor de
+um pixel comparando-o com os 8 vizinhos e gerando um número de 8 bits
+(0–255). Não é compressão — é uma transformação/descritor.</p>
+
+<h2>Convenções adotadas</h2>
+<ol>
+  <li><strong>Janela 3&times;3</strong> centrada no pixel.</li>
+  <li><strong>Binarização:</strong> vizinho <strong>&ge; centro &rarr; 1</strong>,
+      senão 0. Empate conta como 1 (definição clássica, Ojala et&nbsp;al.).
+      O centro não gera bit — é só o limiar.</li>
+  <li><strong>Ordem de leitura:</strong> sentido horário começando no canto
+      superior esquerdo (TL, T, TR, R, BR, B, BL, L). O primeiro bit lido é o
+      mais significativo (peso 128), o último tem peso 1.</li>
+  <li><strong>Bordas:</strong> pixel sem os 8 vizinhos não é calculado.</li>
+</ol>
+
+<h2>Exemplo 1 — os pixels U (centro = 0)</h2>
+
+<p>Na matriz do exercício (P=4, U=0), os dois U estão na linha 2, colunas
+3 e 4. Janela do primeiro:</p>
+
+<table>
+<tr><td>3</td><td>0</td><td>3</td></tr>
+<tr><td>2</td><td class="c">0</td><td>0</td></tr>
+<tr><td>0</td><td>0</td><td>0</td></tr>
+</table>
+
+<p>Centro = 0 é a intensidade mínima: <em>todo</em> vizinho satisfaz
+&ge;&nbsp;0, então os 8 bits são 1:</p>
+
+<p class="formula">LBP(U&#8321;) = LBP(U&#8322;) = 11111111&#8322; = <strong>255</strong></p>
+
+<div class="box">Truque de prova: centro 0 &rarr; 255 sempre, independente
+da ordem de leitura. Simetricamente, centro na intensidade máxima com todos
+os vizinhos estritamente menores &rarr; 0.</div>
+
+<h2>Exemplo 2 — passo a passo completo (centro = 4)</h2>
+
+<p>Pixel P = 4 na posição (4,4) da mesma matriz. Janela e binarização
+(&ge; 4 &rarr; 1):</p>
+
+<table>
+<tr><td>0</td><td>0</td><td>1</td></tr>
+<tr><td>1</td><td class="c">4</td><td>2</td></tr>
+<tr><td>4</td><td>4</td><td>4</td></tr>
+</table>
+
+<table>
+<tr><td>0</td><td>0</td><td>0</td></tr>
+<tr><td>0</td><td class="c">&middot;</td><td>0</td></tr>
+<tr><td>1</td><td>1</td><td>1</td></tr>
+</table>
+
+<p>Leitura horária a partir do canto superior esquerdo
+(TL, T, TR, R, BR, B, BL, L):</p>
+
+<p class="formula">0 0 0 0 1 1 1 0&#8322; &rarr; 8 + 4 + 2 = <strong>14</strong></p>
+
+<p>Os bits 1 agrupados embaixo dizem: "região clara abaixo do pixel" — o
+LBP codifica a geometria local da borda.</p>
+
+<h2>Por que funciona (para justificar na prova)</h2>
+<ul>
+  <li><strong>Invariância a iluminação monotônica:</strong> somar/multiplicar
+      uma constante positiva na imagem inteira não muda nenhuma comparação
+      "&ge;" — o LBP fica idêntico.</li>
+  <li><strong>Descritor de textura:</strong> na prática usa-se o
+      <em>histograma</em> dos valores LBP da região (256 bins) como vetor de
+      características para classificação — não o valor pixel a pixel.</li>
+  <li><strong>Generalização LBP<sub>P,R</sub>:</strong> P pontos amostrados num
+      círculo de raio R (o <code>local_binary_pattern(img, 8, 1)</code> do
+      skimage). Com R=1 e P=8 equivale à janela 3&times;3, exceto que as
+      diagonais são interpoladas no círculo.</li>
+</ul>
+
+<p>Código parametrizável: <code>lbp.py</code> (rode
+<code>python3 lbp.py</code> para reproduzir os exemplos).</p>
+
+</body>
+</html>
