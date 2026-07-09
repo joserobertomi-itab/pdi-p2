@@ -109,7 +109,11 @@ impossível: o original ali é 1, não 3, e a DM só anda &plusmn;2 por pixel.</
 
 <h2>MSE</h2>
 
-<p class="formula">MSE = &Sigma;(original &minus; reconstruído)&sup2; / N&sup2;</p>
+<p class="formula">MSE = &Sigma;(original &minus; reconstruído)&sup2; / (total de pixels)</p>
+
+<p>Aqui a imagem é 5&times;5, então o total de pixels é
+<code>5 &times; 5 = 25</code> (para uma imagem M&times;N seria <code>M&middot;N</code>;
+como é quadrada, vira <code>N&sup2;</code>).</p>
 
 <p>Erros&sup2; por linha: 2 + 9 + 1 + 3 + 2 = 17</p>
 
