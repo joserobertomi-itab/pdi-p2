@@ -76,6 +76,16 @@ Empates com próximo 0 &rarr; descem, saturando em 0: 0; 0; 0;
 1&gt;0&rarr;2
 &nbsp;&rArr;&nbsp; <code>[0, 0, 0, 0, 2]</code></p>
 
+<div class="box"><strong>Por que a linha 3 confunde</strong> (comparando com a linha 2,
+que parece igual): as duas chegam à coluna 4 com empate <code>x = predição = 0</code>,
+mas o <em>próximo valor</em> difere. Na linha 2 o próximo é <strong>3</strong>
+(subir para 2 aproxima &rarr; sobe), e o último pixel original é 3 (chega a 4)
+&rarr; <code>…2, 4</code>. Na linha 3 o próximo é <strong>1</strong>, equidistante de
+2 e 0 (<code>|2−1| = |0−1| = 1</code>) &rarr; o desempate favorece o pixel atual e
+<em>mantém 0</em>; e o último original é apenas 1, então o passo de &plusmn;2 só
+alcança 2 &rarr; <code>…0, 2</code>. Chegar a <code>[0, 0, 0, 2, 4]</code> seria
+impossível: o original ali é 1, não 3, e a DM só anda &plusmn;2 por pixel.</div>
+
 <p><strong>Linha 4</strong> — 3&gt;0&rarr;2; 1&lt;2&rarr;0; 1&gt;0&rarr;2;
 4&gt;2&rarr;4; 2&lt;4&rarr;2
 &nbsp;&rArr;&nbsp; <code>[2, 0, 2, 4, 2]</code></p>
