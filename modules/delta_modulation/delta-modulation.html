@@ -115,6 +115,26 @@ impossível: o original ali é 1, não 3, e a DM só anda &plusmn;2 por pixel.</
 
 <p class="formula"><strong>MSE = 17 / 25 = 0,68</strong></p>
 
+<h2>Taxa de compressão</h2>
+
+<p class="formula">CR = bits<sub>original</sub> / bits<sub>comprimido</sub></p>
+
+<p>Assumindo <strong>8 bits/pixel</strong> no original (convenção 0–255) e a
+imagem 5&times;5 = 25 pixels:</p>
+
+<ul>
+  <li><strong>Original:</strong> 25 &times; 8 = <code>200 bits</code></li>
+  <li><strong>Comprimido:</strong> seed (pixel 0,0) intacto com 8 bits + os
+      outros 24 pixels com 1 bit cada = 8 + 24 = <code>32 bits</code></li>
+</ul>
+
+<p class="formula"><strong>CR = 200 / 32 = 6,25 : 1</strong> &nbsp;(redução de 84%)</p>
+
+<div class="box">Se <em>ignorar o seed</em> (aproximação comum em prova, "1 bit
+por pixel"): <code>CR = 25&times;8 / 25&times;1 = 8 : 1</code> (redução de 87,5%).
+A taxa nominal é <strong>8:1</strong>; a real fica um pouco menor por causa do
+pixel-semente transmitido cheio.</div>
+
 <h2>Os dois artefatos clássicos (para citar na prova)</h2>
 <ul>
   <li><strong>Slope overload</strong> (&delta; pequeno demais): em bordas, a DM
